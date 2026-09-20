@@ -18,6 +18,7 @@ class StudentSeeder extends Seeder
 
         Student::factory()
             ->count(25)
+            ->withUser()
             ->sequence(fn (Sequence $sequence): array => [
                 'course_id' => $courseIds[$sequence->index % count($courseIds)],
             ])

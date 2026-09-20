@@ -8,92 +8,164 @@
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="bg-gray-50 text-gray-900 antialiased">
-    <div class="min-h-screen md:flex">
+<body class="bg-slate-50 text-slate-900 antialiased">
+    @php($user = auth()->user())
+    @php($isAdmin = $user->isAdmin())
+    @php($isTeacher = $user->isTeacher())
+    @php($dashboardRoute = $isAdmin ? 'admin.dashboard' : ($isTeacher ? 'teacher.dashboard' : 'portal.dashboard'))
+    @php($sidebarLink = fn (string $routeName) => request()->routeIs($routeName) ? 'bg-accent-600/15 text-accent-400' : 'text-slate-400 hover:bg-white/5 hover:text-slate-100')
 
-        <div id="sidebar-backdrop" class="fixed inset-0 z-30 hidden bg-gray-900/40 md:hidden" onclick="toggleSidebar()"></div>
+    <div id="sidebar-backdrop" class="fixed inset-0 z-30 hidden bg-slate-900/40 md:hidden" onclick="toggleSidebar()"></div>
 
-        <aside id="sidebar"
-            class="fixed inset-y-0 left-0 z-40 flex w-64 -translate-x-full flex-col border-r border-gray-200 bg-white transition-transform duration-200 md:static md:translate-x-0">
-            <div class="flex h-16 items-center justify-between border-b border-gray-200 px-6">
-                <a href="{{ route('dashboard') }}" class="text-lg font-bold tracking-tight text-gray-900">
-                    Student Manager
-                </a>
-                <button type="button" class="text-gray-400 hover:text-gray-600 md:hidden" onclick="toggleSidebar()" aria-label="Close menu">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
+    <aside id="sidebar"
+        class="fixed inset-y-0 left-0 z-40 flex w-64 -translate-x-full flex-col border-r border-slate-800 bg-slate-900 transition-transform duration-200 md:translate-x-0">
+        <div class="flex h-16 items-center justify-between border-b border-slate-800 px-6">
+            <a href="{{ route($dashboardRoute) }}" class="text-base font-semibold tracking-tight text-white">
+                Student Manager
+            </a>
+            <button type="button" class="text-slate-500 hover:text-slate-300 md:hidden" onclick="toggleSidebar()" aria-label="Close menu">
+                <x-icon name="x-mark" class="h-5 w-5" />
+            </button>
+        </div>
 
-            <nav class="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-                <a href="{{ route('dashboard') }}"
-                    class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium {{ request()->routeIs('dashboard') ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' }}">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                    </svg>
-                    Dashboard
-                </a>
+        <nav class="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+            <p class="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Overview</p>
+            <a href="{{ route($dashboardRoute) }}"
+                class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium {{ $sidebarLink('*.dashboard') }}">
+                <x-icon name="dashboard" class="h-5 w-5" />
+                Dashboard
+            </a>
 
+            @if ($isAdmin)
+                <p class="px-3 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Records</p>
                 <a href="{{ route('students.index') }}"
-                    class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium {{ request()->routeIs('students.*') ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' }}">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-2.13a4 4 0 10-4-4 4 4 0 004 4zm6-2a3 3 0 10-2.7-4.2" />
-                    </svg>
+                    class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium {{ $sidebarLink('students.*') }}">
+                    <x-icon name="students" class="h-5 w-5" />
                     Students
                 </a>
 
                 <a href="{{ route('courses.index') }}"
-                    class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium {{ request()->routeIs('courses.*') ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900' }}">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                    </svg>
+                    class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium {{ $sidebarLink('courses.*') }}">
+                    <x-icon name="courses" class="h-5 w-5" />
                     Courses
                 </a>
-            </nav>
 
-            <div class="border-t border-gray-200 px-6 py-4">
-                <p class="text-xs text-gray-500">{{ config('app.name') }}</p>
-            </div>
-        </aside>
+                <a href="{{ route('subjects.index') }}"
+                    class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium {{ $sidebarLink('subjects.*') }}">
+                    <x-icon name="subjects" class="h-5 w-5" />
+                    Subjects
+                </a>
 
-        <div class="flex min-w-0 flex-1 flex-col">
-            <header class="flex h-16 items-center justify-between border-b border-gray-200 bg-white px-4 sm:px-6">
-                <div class="flex items-center gap-3">
-                    <button type="button" class="rounded-md p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 md:hidden"
-                        onclick="toggleSidebar()" aria-label="Open menu">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                        </svg>
-                    </button>
-                    <span class="text-sm font-medium text-gray-700">@yield('title', 'Dashboard')</span>
-                </div>
-                <div class="flex items-center gap-3">
-                    <span class="hidden text-sm text-gray-500 sm:inline">Admin</span>
-                    <span class="inline-flex h-2.5 w-2.5 rounded-full bg-green-500"></span>
-                </div>
-            </header>
+                <a href="{{ route('teachers.index') }}"
+                    class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium {{ $sidebarLink('teachers.*') }}">
+                    <x-icon name="teachers" class="h-5 w-5" />
+                    Teachers
+                </a>
+            @endif
 
-            <main class="flex-1 px-4 py-6 sm:px-6 lg:px-8">
-                @if (session('success'))
-                    <div class="mb-6 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-                        {{ session('success') }}
-                    </div>
+            @if ($isAdmin || $isTeacher)
+                <p class="px-3 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Academics</p>
+
+                @if ($isTeacher)
+                    <a href="{{ route('grades.index') }}"
+                        class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium {{ $sidebarLink('grades.*') }}">
+                        <x-icon name="grades" class="h-5 w-5" />
+                        Grades
+                    </a>
+
+                    <a href="{{ route('teacher.students') }}"
+                        class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium {{ $sidebarLink('teacher.students') }}">
+                        <x-icon name="students" class="h-5 w-5" />
+                        My Students
+                    </a>
                 @endif
 
-                @if (session('error'))
-                    <div class="mb-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                        {{ session('error') }}
-                    </div>
-                @endif
+                <a href="{{ route('schedules.index') }}"
+                    class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium {{ $sidebarLink('schedules.*') }}">
+                    <x-icon name="schedules" class="h-5 w-5" />
+                    Schedules
+                </a>
+            @endif
 
-                @yield('content')
-            </main>
+            @if (! $isAdmin && ! $isTeacher)
+                <p class="px-3 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Student</p>
+                <a href="{{ route('portal.grades') }}"
+                    class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium {{ $sidebarLink('portal.grades') }}">
+                    <x-icon name="grades" class="h-5 w-5" />
+                    My Grades
+                </a>
 
-            <footer class="border-t border-gray-200 px-6 py-4 text-center text-xs text-gray-400">
-                &copy; {{ date('Y') }} Student Management System &middot; Built with Laravel {{ app()->version() }}
-            </footer>
+                <a href="{{ route('portal.schedule') }}"
+                    class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium {{ $sidebarLink('portal.schedule') }}">
+                    <x-icon name="schedules" class="h-5 w-5" />
+                    My Schedule
+                </a>
+            @endif
+
+            @if ($isAdmin)
+                <p class="px-3 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wider text-slate-500">System</p>
+                <a href="{{ route('settings.index') }}"
+                    class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium {{ $sidebarLink('settings.*') }}">
+                    <x-icon name="settings" class="h-5 w-5" />
+                    Settings
+                </a>
+            @endif
+
+            <p class="px-3 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wider text-slate-500">Account</p>
+            <a href="{{ route('profile.edit') }}"
+                class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium {{ $sidebarLink('profile.*') }}">
+                <x-icon name="user-circle" class="h-5 w-5" />
+                Profile
+            </a>
+        </nav>
+
+        <div class="border-t border-slate-800 px-6 py-4">
+            <p class="text-xs text-slate-500">{{ config('app.name') }}</p>
         </div>
+    </aside>
+
+    <div class="flex min-h-screen flex-col md:pl-64">
+        <header class="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-slate-200 bg-white/80 px-4 backdrop-blur sm:px-6">
+            <div class="flex items-center gap-3">
+                <button type="button" class="-ml-2 rounded-md p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700 md:hidden"
+                    onclick="toggleSidebar()" aria-label="Open menu">
+                    <x-icon name="bars-3" class="h-5 w-5" />
+                </button>
+                <span class="text-sm font-medium text-slate-700">@yield('title', 'Dashboard')</span>
+            </div>
+            <div class="flex items-center gap-4">
+                <a href="{{ route('profile.edit') }}" class="hidden rounded-md text-right sm:block hover:opacity-80" title="Edit profile">
+                <p class="text-sm font-medium text-slate-900">{{ $user->name }}</p>
+                <p class="text-xs capitalize text-slate-500">{{ $user->role->value }}</p>
+            </a>
+                <form method="POST" action="{{ route('logout') }}">
+                    @csrf
+                    <x-button variant="secondary" size="sm" type="submit">
+                        Sign out
+                    </x-button>
+                </form>
+            </div>
+        </header>
+
+        <main class="flex-1 px-6 py-8 sm:px-8 lg:px-10">
+            @if (session('success'))
+                <div class="mb-6 rounded-md border border-accent-200 bg-accent-50 px-4 py-3 text-sm text-accent-700">
+                    {{ session('success') }}
+                </div>
+            @endif
+
+            @if (session('error'))
+                <div class="mb-6 rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                    {{ session('error') }}
+                </div>
+            @endif
+
+            @yield('content')
+        </main>
+
+        <footer class="border-t border-slate-200 px-6 py-4 text-center text-xs text-slate-400">
+            &copy; {{ date('Y') }} Student Management System &middot; Built with Laravel {{ app()->version() }}
+        </footer>
     </div>
 
     <script>

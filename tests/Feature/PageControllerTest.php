@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Enums\Role;
 use App\Models\Post;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -23,7 +25,7 @@ class PageControllerTest extends TestCase
 
     public function test_about_page_renders_team_members(): void
     {
-        $response = $this->get('/about');
+        $response = $this->actingAs($this->user())->get('/about');
 
         $response->assertStatus(200);
         $response->assertSee('Alex Morgan');
@@ -31,7 +33,7 @@ class PageControllerTest extends TestCase
 
     public function test_contact_page_renders_contact_details(): void
     {
-        $response = $this->get('/contact');
+        $response = $this->actingAs($this->user())->get('/contact');
 
         $response->assertStatus(200);
         $response->assertSee('hello@example.com');
@@ -39,7 +41,7 @@ class PageControllerTest extends TestCase
 
     public function test_post_show_page_displays_full_content(): void
     {
-        $response = $this->get('/posts/first-post');
+        $response = $this->actingAs($this->user())->get('/posts/first-post');
 
         $response->assertStatus(200);
         $response->assertSee('Content of the first post.');
@@ -48,6 +50,16 @@ class PageControllerTest extends TestCase
 
     public function test_unknown_post_returns_404(): void
     {
-        $this->get('/posts/does-not-exist')->assertNotFound();
+        $this->actingAs($this->user())->get('/posts/does-not-exist')->assertNotFound();
+    }
+
+    public function test_public_pages_require_authentication(): void
+    {
+        $this->get('/about')->assertRedirectToRoute('login');
+    }
+
+    private function user(): User
+    {
+        return User::factory()->create(['role' => Role::Admin]);
     }
 }

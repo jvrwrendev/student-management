@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Enums\Role;
 use App\Models\Course;
 use App\Models\Student;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
@@ -17,7 +19,7 @@ class CourseControllerTest extends TestCase
         $course = Course::factory()->create();
         Student::factory()->count(2)->create(['course_id' => $course->id]);
 
-        $response = $this->get('/courses');
+        $response = $this->actingAs($this->admin())->get('/admin/courses');
 
         $response->assertOk();
         $response->assertSee($course->course_name);
@@ -29,7 +31,7 @@ class CourseControllerTest extends TestCase
         $course = Course::factory()->create();
         $student = Student::factory()->create(['course_id' => $course->id]);
 
-        $response = $this->get("/courses/{$course->id}");
+        $response = $this->actingAs($this->admin())->get("/admin/courses/{$course->id}");
 
         $response->assertOk();
         $response->assertSee($course->course_name);
@@ -38,12 +40,12 @@ class CourseControllerTest extends TestCase
 
     public function test_unknown_course_returns_404(): void
     {
-        $this->get('/courses/999999')->assertNotFound();
+        $this->actingAs($this->admin())->get('/admin/courses/999999')->assertNotFound();
     }
 
     public function test_valid_payload_creates_course_and_redirects_to_index(): void
     {
-        $response = $this->post('/courses', $this->validPayload());
+        $response = $this->actingAs($this->admin())->post('/admin/courses', $this->validPayload());
 
         $response->assertRedirect(route('courses.index'));
         $response->assertSessionHas('success');
@@ -52,7 +54,7 @@ class CourseControllerTest extends TestCase
 
     public function test_empty_payload_highlights_required_fields(): void
     {
-        $response = $this->post('/courses', []);
+        $response = $this->actingAs($this->admin())->post('/admin/courses', []);
 
         $response->assertSessionHasErrors(['course_code', 'course_name', 'status']);
     }
@@ -63,7 +65,7 @@ class CourseControllerTest extends TestCase
         $payload = $this->validPayload();
         $payload[$field] = $value;
 
-        $response = $this->post('/courses', $payload);
+        $response = $this->actingAs($this->admin())->post('/admin/courses', $payload);
 
         $response->assertSessionHasErrors($field);
     }
@@ -79,7 +81,7 @@ class CourseControllerTest extends TestCase
     {
         Course::factory()->create(['course_code' => 'BSMED']);
 
-        $response = $this->post('/courses', $this->validPayload());
+        $response = $this->actingAs($this->admin())->post('/admin/courses', $this->validPayload());
 
         $response->assertSessionHasErrors('course_code');
     }
@@ -90,7 +92,7 @@ class CourseControllerTest extends TestCase
         $payload = $this->validPayload($course->course_code);
         $payload['course_name'] = 'Updated Course Name';
 
-        $response = $this->put("/courses/{$course->id}", $payload);
+        $response = $this->actingAs($this->admin())->put("/admin/courses/{$course->id}", $payload);
 
         $response->assertRedirect(route('courses.index'));
         $response->assertSessionHas('success');
@@ -101,7 +103,7 @@ class CourseControllerTest extends TestCase
     {
         $course = Course::factory()->create();
 
-        $response = $this->delete("/courses/{$course->id}");
+        $response = $this->actingAs($this->admin())->delete("/admin/courses/{$course->id}");
 
         $response->assertRedirect(route('courses.index'));
         $response->assertSessionHas('success');
@@ -113,9 +115,14 @@ class CourseControllerTest extends TestCase
         $course = Course::factory()->create();
         $student = Student::factory()->create(['course_id' => $course->id]);
 
-        $this->delete("/courses/{$course->id}");
+        $this->actingAs($this->admin())->delete("/admin/courses/{$course->id}");
 
         $this->assertModelMissing($student);
+    }
+
+    private function admin(): User
+    {
+        return User::factory()->create(['role' => Role::Admin]);
     }
 
     private function validPayload(?string $code = null): array

@@ -2,8 +2,10 @@
 
 namespace Database\Factories;
 
+use App\Enums\Role;
 use App\Models\Course;
 use App\Models\Student;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -32,5 +34,21 @@ class StudentFactory extends Factory
             'year_level' => $this->faker->randomElement(['1st Year', '2nd Year', '3rd Year', '4th Year']),
             'status' => $this->faker->randomElement(['active', 'inactive']),
         ];
+    }
+
+    /**
+     * Attach a linked student login account to the student.
+     */
+    public function withUser(): static
+    {
+        return $this->afterCreating(function (Student $student): void {
+            $user = User::factory()->create([
+                'name' => $student->full_name,
+                'email' => $student->email,
+                'role' => Role::Student,
+            ]);
+
+            $student->update(['user_id' => $user->id]);
+        });
     }
 }

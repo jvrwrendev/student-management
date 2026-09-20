@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Enums\Role;
 use App\Models\Course;
 use App\Models\Student;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
@@ -16,11 +18,23 @@ class StudentControllerTest extends TestCase
     {
         $student = Student::factory()->create();
 
-        $response = $this->get('/students');
+        $response = $this->actingAs($this->admin())->get('/admin/students');
 
         $response->assertOk();
         $response->assertSee($student->full_name);
         $response->assertSee($student->student_id);
+    }
+
+    public function test_students_page_requires_authentication(): void
+    {
+        $this->get('/admin/students')->assertRedirectToRoute('login');
+    }
+
+    public function test_students_page_forbids_non_admin_roles(): void
+    {
+        $response = $this->actingAs($this->user(Role::Student))->get('/admin/students');
+
+        $response->assertForbidden();
     }
 
     public function test_search_filters_students_by_name(): void
@@ -29,7 +43,7 @@ class StudentControllerTest extends TestCase
         Student::factory()->create(['course_id' => $course->id, 'last_name' => 'Reynolds']);
         Student::factory()->create(['course_id' => $course->id, 'last_name' => 'Whitfield']);
 
-        $response = $this->get('/students?search=Reynolds');
+        $response = $this->actingAs($this->admin())->get('/admin/students?search=Reynolds');
 
         $response->assertOk();
         $response->assertSee('Reynolds');
@@ -40,7 +54,7 @@ class StudentControllerTest extends TestCase
     {
         $student = Student::factory()->create();
 
-        $response = $this->get("/students/{$student->id}");
+        $response = $this->actingAs($this->admin())->get("/admin/students/{$student->id}");
 
         $response->assertOk();
         $response->assertSee($student->full_name);
@@ -50,23 +64,56 @@ class StudentControllerTest extends TestCase
 
     public function test_unknown_student_returns_404(): void
     {
-        $this->get('/students/999999')->assertNotFound();
+        $this->actingAs($this->admin())->get('/admin/students/999999')->assertNotFound();
     }
 
-    public function test_valid_payload_creates_student_and_redirects_to_index(): void
+    public function test_valid_payload_creates_student_and_redirects_to_show(): void
     {
         $course = Course::factory()->create();
 
-        $response = $this->post('/students', $this->validPayload($course->id, 'new@example.com'));
+        $response = $this->actingAs($this->admin())->post('/admin/students', $this->validPayload($course->id, 'new@example.com'));
 
-        $response->assertRedirect(route('students.index'));
+        $student = Student::query()->where('email', 'new@example.com')->firstOrFail();
+
+        $response->assertRedirect(route('students.show', $student));
         $response->assertSessionHas('success');
         $this->assertDatabaseHas('students', ['email' => 'new@example.com', 'course_id' => $course->id]);
     }
 
+    public function test_valid_payload_with_login_creates_student_login(): void
+    {
+        $course = Course::factory()->create();
+        $payload = $this->validPayload($course->id, 'new@example.com');
+        $payload['create_account'] = '1';
+        $payload['password'] = 'secret-password';
+        $payload['password_confirmation'] = 'secret-password';
+
+        $this->actingAs($this->admin())->post('/admin/students', $payload);
+
+        $student = Student::query()->where('email', 'new@example.com')->firstOrFail();
+        $this->assertNotNull($student->user);
+        $this->assertSame('new@example.com', $student->user->email);
+        $this->assertSame(Role::Student, $student->user->role);
+        $this->assertTrue(password_verify('secret-password', $student->user->password));
+    }
+
+    public function test_creating_login_requires_confirmed_password(): void
+    {
+        $course = Course::factory()->create();
+        $payload = $this->validPayload($course->id, 'new@example.com');
+        $payload['create_account'] = '1';
+        $payload['password'] = 'secret-password';
+        $payload['password_confirmation'] = 'different-password';
+
+        $response = $this->actingAs($this->admin())->post('/admin/students', $payload);
+
+        $response->assertSessionHasErrors('password');
+        $this->assertDatabaseMissing('students', ['email' => 'new@example.com']);
+    }
+
     public function test_empty_payload_highlights_required_fields(): void
     {
-        $response = $this->post('/students', []);
+        $response = $this->actingAs($this->admin())->post('/admin/students', []);
 
         $response->assertSessionHasErrors([
             'student_id',
@@ -89,7 +136,7 @@ class StudentControllerTest extends TestCase
         $payload = $this->validPayload($course->id, 'new@example.com');
         $payload[$field] = $value;
 
-        $response = $this->post('/students', $payload);
+        $response = $this->actingAs($this->admin())->post('/admin/students', $payload);
 
         $response->assertSessionHasErrors($field);
     }
@@ -110,7 +157,7 @@ class StudentControllerTest extends TestCase
     {
         $existing = Student::factory()->create();
 
-        $response = $this->post('/students', $this->validPayload(
+        $response = $this->actingAs($this->admin())->post('/admin/students', $this->validPayload(
             $existing->course_id,
             $existing->email,
             $existing->student_id,
@@ -119,12 +166,12 @@ class StudentControllerTest extends TestCase
         $response->assertSessionHasErrors(['student_id', 'email']);
     }
 
-    public function test_valid_payload_updates_student_and_redirects_to_index(): void
+    public function test_valid_payload_updates_student_and_redirects_to_show(): void
     {
         $course = Course::factory()->create();
         $student = Student::factory()->create();
 
-        $response = $this->put("/students/{$student->id}", $this->validPayload(
+        $response = $this->actingAs($this->admin())->put("/admin/students/{$student->id}", $this->validPayload(
             $course->id,
             $student->email,
             $student->student_id,
@@ -132,7 +179,7 @@ class StudentControllerTest extends TestCase
             'Person',
         ));
 
-        $response->assertRedirect(route('students.index'));
+        $response->assertRedirect(route('students.show', $student));
         $response->assertSessionHas('success');
         $this->assertDatabaseHas('students', [
             'id' => $student->id,
@@ -146,11 +193,43 @@ class StudentControllerTest extends TestCase
     {
         $student = Student::factory()->create();
 
-        $response = $this->delete("/students/{$student->id}");
+        $response = $this->actingAs($this->admin())->delete("/admin/students/{$student->id}");
 
         $response->assertRedirect(route('students.index'));
         $response->assertSessionHas('success');
         $this->assertModelMissing($student);
+    }
+
+    public function test_deleting_student_removes_linked_login(): void
+    {
+        $student = Student::factory()->withUser()->create();
+
+        $this->actingAs($this->admin())->delete("/admin/students/{$student->id}");
+
+        $this->assertModelMissing($student);
+        $this->assertDatabaseMissing('users', ['id' => $student->user_id]);
+    }
+
+    public function test_updating_student_resets_linked_login_password(): void
+    {
+        $course = Course::factory()->create();
+        $student = Student::factory()->withUser()->create();
+        $payload = $this->validPayload($course->id, $student->email, $student->student_id);
+        $payload['reset_password'] = 'new-secret';
+
+        $this->actingAs($this->admin())->put("/admin/students/{$student->id}", $payload);
+
+        $this->assertTrue(password_verify('new-secret', $student->user->fresh()->password));
+    }
+
+    private function admin(): User
+    {
+        return User::factory()->create(['role' => Role::Admin]);
+    }
+
+    private function user(Role $role): User
+    {
+        return User::factory()->create(['role' => $role]);
     }
 
     private function validPayload(
